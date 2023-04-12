@@ -2,12 +2,91 @@ package ru.michaelshell.reactive.test;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Subscription;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 @Slf4j
 public class MonoTest {
 
     @Test
-    public void test1() {
-        log.info("Everything working...");
+    public void monoSubscribe() {
+        Mono<String> mono = Mono.just("Michael").log();
+
+
+        StepVerifier.create(mono)
+                .expectNext("Michael")
+                .verifyComplete();
     }
+
+    @Test
+    public void monoSubscriberConsumer() {
+        Mono<String> mono = Mono.just("Michael");
+        mono.subscribe(s -> log.info("value: " + s));
+
+        StepVerifier.create(mono)
+                .expectNext("Michael")
+                .verifyComplete();
+    }
+
+    @Test
+    public void monoSubscriberConsumerError() {
+        Mono<String> mono = Mono.just("Michael")
+                .handle((s, sink) -> sink.error(new RuntimeException("Error message!!")));
+
+        mono.subscribe(s -> log.info("value: " + s), Throwable::printStackTrace);
+
+        log.info("----------------------------------------");
+        StepVerifier.create(mono)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    public void monoSubscriberConsumerCompleted() {
+        Mono<String> mono = Mono.just("Michael").log();
+
+        mono.subscribe(s -> log.info("value: " + s),
+                Throwable::printStackTrace,
+                () -> log.info("FINISHED"));
+
+        log.info("----------------------------------------");
+        StepVerifier.create(mono)
+                .expectNext("Michael")
+                .verifyComplete();
+    }
+
+    @Test
+    public void monoSubscriberConsumerCompletedSubscription() {
+        Mono<String> mono = Mono.just("Michael").log();
+
+        mono.subscribe(s -> log.info("value: " + s),
+                Throwable::printStackTrace,
+                () -> log.info("FINISHED"),
+                Subscription::cancel);
+
+        log.info("----------------------------------------");
+        StepVerifier.create(mono)
+                .expectNext("Michael")
+                .verifyComplete();
+    }
+
+    @Test
+    public void monoDoOnMethods() {
+        Mono<String> mono = Mono.just("Michael").log()
+                .doOnSubscribe(subscription -> log.info("Subscribed"))
+                .doOnRequest(l -> log.info("doOnRequest Info"))
+                .doOnNext(s -> log.info("DoOnNext Value: ", s));
+
+        mono.subscribe(s -> log.info("value: " + s),
+                Throwable::printStackTrace,
+                () -> log.info("FINISHED")
+               );
+
+        log.info("----------------------------------------");
+        StepVerifier.create(mono)
+                .expectNext("Michael")
+                .verifyComplete();
+    }
+
 }

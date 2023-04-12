@@ -89,4 +89,45 @@ public class MonoTest {
                 .verifyComplete();
     }
 
+    @Test
+    public void monoDoOnError() {
+        Mono<Object> error = Mono.error(new RuntimeException("Runtime ex"))
+                .doOnError(e -> log.info("error message: {}", e.getMessage())).log();
+
+        StepVerifier.create(error)
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    public void monoDoOnErrorResume() {
+        Mono<Object> error = Mono.error(new RuntimeException("Runtime ex"))
+                .doOnError(e -> log.info("error message: {}", e.getMessage()))
+                .onErrorResume(e -> {
+                    log.info("Error Resume");
+                    return Mono.just("afterErrorResume");
+                })
+                .log();
+
+        StepVerifier.create(error)
+                .expectNext("afterErrorResume")
+                .verifyComplete();
+    }
+
+    @Test
+    public void monoDoOnErrorReturn() {
+        Mono<Object> error = Mono.error(new RuntimeException("Runtime ex"))
+                .doOnError(e -> log.info("error message: {}", e.getMessage()))
+                .onErrorReturn("RETURN")
+                .onErrorResume(e -> {
+                    log.info("Error Resume");
+                    return Mono.just("afterErrorResume");
+                })
+                .log();
+
+        StepVerifier.create(error)
+                .expectNext("RETURN")
+                .verifyComplete();
+    }
+
 }

@@ -7,12 +7,11 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 @Slf4j
-public class MonoTest {
+class MonoTest {
 
     @Test
-    public void monoSubscribe() {
+    void monoSubscribe() {
         Mono<String> mono = Mono.just("Michael").log();
-
 
         StepVerifier.create(mono)
                 .expectNext("Michael")
@@ -20,8 +19,8 @@ public class MonoTest {
     }
 
     @Test
-    public void monoSubscriberConsumer() {
-        Mono<String> mono = Mono.just("Michael");
+    void monoSubscriberConsumer() {
+        Mono<String> mono = Mono.just("Michael").log();
         mono.subscribe(s -> log.info("value: " + s));
 
         StepVerifier.create(mono)
@@ -30,7 +29,7 @@ public class MonoTest {
     }
 
     @Test
-    public void monoSubscriberConsumerError() {
+    void monoSubscriberConsumerError() {
         Mono<String> mono = Mono.just("Michael")
                 .handle((s, sink) -> sink.error(new RuntimeException("Error message!!")));
 
@@ -43,8 +42,8 @@ public class MonoTest {
     }
 
     @Test
-    public void monoSubscriberConsumerCompleted() {
-        Mono<String> mono = Mono.just("Michael").log();
+    void monoSubscriberConsumerCompleted() {
+        Mono<String> mono = Mono.just("Michael");
 
         mono.subscribe(s -> log.info("value: " + s),
                 Throwable::printStackTrace,
@@ -57,7 +56,7 @@ public class MonoTest {
     }
 
     @Test
-    public void monoSubscriberConsumerCompletedSubscription() {
+    void monoSubscriberConsumerCompletedSubscription() {
         Mono<String> mono = Mono.just("Michael").log();
 
         mono.subscribe(s -> log.info("value: " + s),
@@ -72,11 +71,11 @@ public class MonoTest {
     }
 
     @Test
-    public void monoDoOnMethods() {
+    void monoDoOnMethods() {
         Mono<String> mono = Mono.just("Michael").log()
                 .doOnSubscribe(subscription -> log.info("Subscribed"))
                 .doOnRequest(l -> log.info("doOnRequest Info"))
-                .doOnNext(s -> log.info("DoOnNext Value: ", s));
+                .doOnNext(s -> log.info("DoOnNext Value: {} ", s));
 
         mono.subscribe(s -> log.info("value: " + s),
                 Throwable::printStackTrace,
@@ -90,7 +89,7 @@ public class MonoTest {
     }
 
     @Test
-    public void monoDoOnError() {
+    void monoDoOnError() {
         Mono<Object> error = Mono.error(new RuntimeException("Runtime ex"))
                 .doOnError(e -> log.info("error message: {}", e.getMessage())).log();
 
@@ -100,7 +99,7 @@ public class MonoTest {
     }
 
     @Test
-    public void monoDoOnErrorResume() {
+    void monoDoOnErrorResume() {
         Mono<Object> error = Mono.error(new RuntimeException("Runtime ex"))
                 .doOnError(e -> log.info("error message: {}", e.getMessage()))
                 .onErrorResume(e -> {
@@ -115,7 +114,7 @@ public class MonoTest {
     }
 
     @Test
-    public void monoDoOnErrorReturn() {
+    void monoDoOnErrorReturn() {
         Mono<Object> error = Mono.error(new RuntimeException("Runtime ex"))
                 .doOnError(e -> log.info("error message: {}", e.getMessage()))
                 .onErrorReturn("RETURN")

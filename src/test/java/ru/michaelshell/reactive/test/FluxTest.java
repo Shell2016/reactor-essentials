@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.BaseSubscriber;
+import reactor.core.publisher.ConnectableFlux;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -88,6 +89,17 @@ class FluxTest {
     }
 
     @Test
+    void fluxSubscriberBackpressureRateLimit() {
+        Flux<Integer> flux = Flux.range(1, 10)
+                .log()
+                .limitRate(2); //same result as above, should be after log() to work
+
+        StepVerifier.create(flux)
+                .expectNext(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .verifyComplete();
+    }
+
+    @Test
     void fluxSubscriberIntervalOne() throws InterruptedException {
         Flux<Long> interval = Flux.interval(Duration.ofMillis(200))
                         .take(10);
@@ -114,6 +126,32 @@ class FluxTest {
     private Flux<Long> getInterval() {
         return Flux.interval(Duration.ofDays(1L))
                 .log();
+    }
+
+    @Test
+    void connectableFlux() throws InterruptedException {
+        ConnectableFlux<Integer> flux = Flux.range(1, 10)
+//                .log()
+                .delayElements(Duration.ofMillis(100))
+                .publish();
+
+        flux.connect();
+
+//        log.info("Thread sleeps 500ms");
+//        Thread.sleep(500);
+//
+//        flux.subscribe(i -> log.info("Sub1 number {}", i));
+//
+//        log.info("Thread sleeps 300ms");
+//        Thread.sleep(300);
+//
+//        flux.subscribe(i -> log.info("Sub2 number {}", i));
+
+        StepVerifier.create(flux)
+                .then(flux::connect)
+                .thenConsumeWhile(i -> i < 4)
+                .expectNext(4,5,6,7,8,9,10)
+                .verifyComplete();
     }
 
 

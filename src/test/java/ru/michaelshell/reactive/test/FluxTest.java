@@ -102,7 +102,7 @@ class FluxTest {
     @Test
     void fluxSubscriberIntervalOne() throws InterruptedException {
         Flux<Long> interval = Flux.interval(Duration.ofMillis(200))
-                        .take(10);
+                .take(10);
 
         interval.subscribe(i -> log.info("Number {}", i));
 
@@ -150,7 +150,20 @@ class FluxTest {
         StepVerifier.create(flux)
                 .then(flux::connect)
                 .thenConsumeWhile(i -> i < 4)
-                .expectNext(4,5,6,7,8,9,10)
+                .expectNext(4, 5, 6, 7, 8, 9, 10)
+                .verifyComplete();
+    }
+
+    @Test
+    void connectableFluxAutoConnect() throws InterruptedException {
+        Flux<Integer> fluxAutoConnect = Flux.range(1, 10)
+                .delayElements(Duration.ofMillis(100))
+                .publish()
+                .autoConnect(2);
+
+        StepVerifier.create(fluxAutoConnect)
+                .then(fluxAutoConnect::subscribe)
+                .expectNext(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
                 .verifyComplete();
     }
 

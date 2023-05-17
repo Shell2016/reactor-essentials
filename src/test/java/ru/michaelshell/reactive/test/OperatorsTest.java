@@ -1,10 +1,16 @@
 package ru.michaelshell.reactive.test;
 
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 @Slf4j
 class OperatorsTest {
@@ -124,6 +130,23 @@ class OperatorsTest {
         StepVerifier.create(flux)
                 .expectSubscription()
                 .expectNext(1,2,3,4,5)
+                .verifyComplete();
+    }
+
+    @Test
+    void subscribeOnIO() {
+        Mono<List<String>> list = Mono.fromCallable(() -> Files.readAllLines(Path.of("text-file")))
+                .subscribeOn(Schedulers.boundedElastic());
+
+        list.subscribe(l -> log.info("{}", l));
+
+        StepVerifier.create(list)
+                .expectSubscription()
+                .thenConsumeWhile(strings -> {
+                    Assertions.assertFalse(strings.isEmpty());
+                    log.info("size {}", strings.size());
+                    return true;
+                })
                 .verifyComplete();
     }
 }

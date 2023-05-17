@@ -31,7 +31,7 @@ class OperatorsTest {
 
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -50,7 +50,7 @@ class OperatorsTest {
 
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -70,7 +70,7 @@ class OperatorsTest {
 
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -90,7 +90,7 @@ class OperatorsTest {
 
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -110,7 +110,7 @@ class OperatorsTest {
 
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -130,7 +130,7 @@ class OperatorsTest {
 
         StepVerifier.create(flux)
                 .expectSubscription()
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -179,7 +179,31 @@ class OperatorsTest {
         Assertions.assertTrue(atomicLong.get() > 0);
     }
 
-    private Flux<Object> emptyFlux() {
-        return Flux.empty();
+    @Test
+    void concatOperator() {
+        Flux<Integer> flux1 = Flux.just(1, 2);
+        Flux<Integer> flux2 = Flux.just(3, 4);
+
+//        Flux<Integer> concat = Flux.concat(flux1, flux2);
+        Flux<Integer> concat = flux1.concatWith(flux2);
+
+
+        StepVerifier.create(concat)
+                .expectNext(1,2,3,4)
+                .verifyComplete();
     }
+
+    @Test
+    void combineLatest() {
+        Flux<String> flux1 = Flux.just("a", "b");
+        Flux<String> flux2 = Flux.just("c", "d");
+
+        Flux<String> combinedLatest = Flux.combineLatest(flux1, flux2, (s1, s2) -> s1.toUpperCase() + s2.toUpperCase());
+
+        StepVerifier.create(combinedLatest)
+                .expectNext("BC", "BD")
+                .verifyComplete();
+    }
+
+
 }

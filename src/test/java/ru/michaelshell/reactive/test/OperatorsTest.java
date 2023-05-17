@@ -10,6 +10,7 @@ import reactor.test.StepVerifier;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -202,6 +203,21 @@ class OperatorsTest {
 
         StepVerifier.create(combinedLatest)
                 .expectNext("BC", "BD")
+                .verifyComplete();
+    }
+
+    @Test
+    void merge() {
+        Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
+        Flux<String> flux2 = Flux.just("c", "d");
+
+        Flux<String> merged = Flux.merge(flux1, flux2);
+
+        merged.subscribe(log::info);
+
+
+        StepVerifier.create(merged)
+                .expectNext("c", "d", "a", "b")
                 .verifyComplete();
     }
 

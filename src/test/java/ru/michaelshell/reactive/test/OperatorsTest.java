@@ -11,6 +11,7 @@ import reactor.test.StepVerifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 class OperatorsTest {
@@ -148,5 +149,37 @@ class OperatorsTest {
                     return true;
                 })
                 .verifyComplete();
+    }
+
+    @Test
+    void switchIfEmpty() {
+        Flux<Object> flux = Flux.empty()
+                .switchIfEmpty(Flux.just("not empty"))
+                .log();
+
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNext("not empty")
+                .verifyComplete();
+    }
+
+    @Test
+    void defer() throws InterruptedException {
+        Mono<Long> just = Mono.just(System.currentTimeMillis());
+        Mono<Long> defer = Mono.defer(() -> Mono.just(System.currentTimeMillis()));
+
+        defer.subscribe(l -> log.info("time {}", l));
+        Thread.sleep(100L);
+        defer.subscribe(l -> log.info("time {}", l));
+        Thread.sleep(100L);
+        defer.subscribe(l -> log.info("time {}", l));
+
+        AtomicLong atomicLong = new AtomicLong();
+        defer.subscribe(atomicLong::set);
+        Assertions.assertTrue(atomicLong.get() > 0);
+    }
+
+    private Flux<Object> emptyFlux() {
+        return Flux.empty();
     }
 }

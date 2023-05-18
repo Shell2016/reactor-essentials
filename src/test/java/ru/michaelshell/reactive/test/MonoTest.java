@@ -1,13 +1,38 @@
 package ru.michaelshell.reactive.test;
 
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
+import reactor.blockhound.BlockHound;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
+
 @Slf4j
 class MonoTest {
+
+    @BeforeAll
+    static void init() {
+        BlockHound.install();
+    }
+
+    @Test
+    @Disabled("blockhound tested")
+    void blockhound() {
+        Mono.delay(Duration.ofMillis(1))
+                .doOnNext(it -> {
+                    try {
+                        Thread.sleep(10);
+                    }
+                    catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .block(); // should throw an exception about Thread.sleep
+    }
 
     @Test
     void monoSubscribe() {

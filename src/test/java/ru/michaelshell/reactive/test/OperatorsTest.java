@@ -1,5 +1,7 @@
 package ru.michaelshell.reactive.test;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
@@ -182,7 +185,7 @@ class OperatorsTest {
 
     @Test
     void concatOperator() {
-        Flux<Integer> flux1 = Flux.just(1, 2);
+        Flux<Integer> flux1 = Flux.just(1, 2).delayElements(Duration.ofMillis(200));
         Flux<Integer> flux2 = Flux.just(3, 4);
 
 //        Flux<Integer> concat = Flux.concat(flux1, flux2);
@@ -190,7 +193,7 @@ class OperatorsTest {
 
 
         StepVerifier.create(concat)
-                .expectNext(1,2,3,4)
+                .expectNext(1, 2, 3, 4)
                 .verifyComplete();
     }
 
@@ -215,11 +218,141 @@ class OperatorsTest {
 
         merged.subscribe(log::info);
 
-
         StepVerifier.create(merged)
                 .expectNext("c", "d", "a", "b")
                 .verifyComplete();
     }
 
+    @Test
+    void mergeSequential() {
+        Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
+        Flux<String> flux2 = Flux.just("c", "d");
+
+        Flux<String> merged = Flux.mergeSequential(flux1, flux2, flux1);
+
+        merged.subscribe(log::info);
+
+        StepVerifier.create(merged)
+                .expectNext("a", "b", "c", "d", "a", "b")
+                .verifyComplete();
+    }
+
+    @Test
+    void concatDelayError() {
+        Flux<String> flux1 = Flux.just("a", "b")
+                .handle((s, sink) -> {
+                    if (Objects.equals(s, "b")) {
+                        sink.error(new RuntimeException());
+                        return;
+                    }
+                    sink.next(s);
+
+                });
+        Flux<String> flux2 = Flux.just("c", "d");
+
+        Flux<String> merged = Flux.concatDelayError(flux1, flux2).log();
+
+        StepVerifier.create(merged)
+                .expectNext("a", "c", "d")
+                .expectError()
+                .verify();
+    }
+
+    @Test
+    void mergeDelayError() {
+        Flux<String> flux1 = Flux.just("a", "b")
+                .<String>handle((s, sink) -> {
+                    if ("b".equals(s)) {
+                        sink.error(new RuntimeException());
+                        return;
+                    }
+                    sink.next(s);
+                })
+                .doOnError(throwable -> log.info("Do something here"));
+        Flux<String> flux2 = Flux.just("c", "d");
+
+        Flux<String> merged = Flux.mergeDelayError(1, flux1, flux2, flux1).log();
+
+        merged.subscribe(log::info);
+
+        StepVerifier.create(merged)
+                .expectNext("a", "c", "d", "a")
+                .expectError()
+                .verify();
+    }
+
+    @Test
+    void flatMap() {
+        Flux<String> flux = Flux.just("a", "b");
+//        Flux<Flux<String>> fluxFlux = flux.map(String::toUpperCase)
+//                .map(this::findByName)
+//                .log();
+
+        Flux<String> flatFlux = flux.map(String::toUpperCase)
+                .flatMap(this::findByName)
+                .log();
+
+        flatFlux.subscribe();
+
+        StepVerifier
+                .create(flatFlux)
+                .expectSubscription()
+                .expectNext("nameA1", "nameA2", "nameB1", "nameB2")
+                .verifyComplete();
+
+    }
+
+    @Test
+    void flatMapSequential() {
+        Flux<String> flux = Flux.just("a", "b");
+
+        Flux<String> flatFlux = flux.map(String::toUpperCase)
+                .flatMapSequential(this::findByName)
+                .log();
+
+        flatFlux.subscribe();
+
+        StepVerifier
+                .create(flatFlux)
+                .expectSubscription()
+                .expectNext("nameA1", "nameA2", "nameB1", "nameB2")
+                .verifyComplete();
+    }
+
+    private Flux<String> findByName(String name) {
+        return name.equals("A")
+                ? Flux.just("nameA1", "nameA2").delayElements(Duration.ofMillis(200))
+                : Flux.just("nameB1", "nameB2");
+    }
+
+    @Test
+    void zip() {
+        Flux<String> titlesFlux = Flux.just("Grand Blue", "Baki");
+        Flux<String> studiosFlux = Flux.just("Zero-G", "TMS Entertainment");
+        Flux<Integer> episodesFlux = Flux.just(12, 24);
+
+
+        Flux<Anime> animeFlux = Flux.zip(titlesFlux, studiosFlux, episodesFlux)
+                .flatMap(objects -> Flux.just(new Anime(objects.getT1(), objects.getT2(), objects.getT3()))).log();
+
+//        animeFlux.subscribe(anime -> log.info(anime.toString()));
+
+        StepVerifier
+                .create(animeFlux)
+                .expectSubscription()
+                .expectNext(new Anime("Grand Blue", "Zero-G", 12),
+                        new Anime("Baki", "TMS Entertainment", 24))
+                .verifyComplete();
+
+
+    }
+
+    @Data
+    @AllArgsConstructor
+    class Anime {
+        private String title;
+        private String studio;
+        private int episodes;
+    }
 
 }

@@ -14,10 +14,10 @@ import java.time.Duration;
 @Slf4j
 class MonoTest {
 
-    @BeforeAll
-    static void init() {
-        BlockHound.install();
-    }
+//    @BeforeAll
+//    static void init() {
+//        BlockHound.install();
+//    }
 
     @Test
     @Disabled("blockhound tested")
@@ -36,9 +36,11 @@ class MonoTest {
 
     @Test
     void monoSubscribe() {
-        Mono<String> mono = Mono.just("Michael").log();
+        Mono<String> mono = Mono.just("Michael");
 
-        StepVerifier.create(mono)
+        mono.subscribe();
+
+        StepVerifier.create(mono.log())
                 .expectNext("Michael")
                 .verifyComplete();
     }
@@ -61,14 +63,15 @@ class MonoTest {
         mono.subscribe(s -> log.info("value: " + s), Throwable::printStackTrace);
 
         log.info("----------------------------------------");
-        StepVerifier.create(mono)
+        StepVerifier.create(mono.log())
                 .expectError(RuntimeException.class)
                 .verify();
     }
 
     @Test
     void monoSubscriberConsumerCompleted() {
-        Mono<String> mono = Mono.just("Michael");
+        Mono<String> mono = Mono.just("Michael").log()
+                .map(String::toUpperCase);
 
         mono.subscribe(s -> log.info("value: " + s),
                 Throwable::printStackTrace,
@@ -76,7 +79,7 @@ class MonoTest {
 
         log.info("----------------------------------------");
         StepVerifier.create(mono)
-                .expectNext("Michael")
+                .expectNext("Michael".toUpperCase())
                 .verifyComplete();
     }
 
@@ -87,7 +90,7 @@ class MonoTest {
         mono.subscribe(s -> log.info("value: " + s),
                 Throwable::printStackTrace,
                 () -> log.info("FINISHED"),
-                Subscription::cancel);
+                subscription -> subscription.request(3));
 
         log.info("----------------------------------------");
         StepVerifier.create(mono)

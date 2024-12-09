@@ -27,7 +27,7 @@ class OperatorsTest {
                     log.info("Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
                 })
-                .subscribeOn(Schedulers.boundedElastic())
+                .subscribeOn(Schedulers.boundedElastic()) //affect entire chain, не зависит от места применения в цепочке
                 .map(i -> {
                     log.info("Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
@@ -46,7 +46,7 @@ class OperatorsTest {
                     log.info("Map1 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
                 })
-                .publishOn(Schedulers.boundedElastic())
+                .publishOn(Schedulers.boundedElastic()) //зависит от места в цепочке, аффектит только идущее следом
                 .map(i -> {
                     log.info("Map2 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
@@ -61,12 +61,12 @@ class OperatorsTest {
     @Test
     void multipleSubscribeOnSimple() {
         Flux<Integer> flux = Flux.range(1, 5)
-                .subscribeOn(Schedulers.single())
+                .subscribeOn(Schedulers.single()) //только первый используется
                 .map(i -> {
                     log.info("Map1 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
                 })
-                .subscribeOn(Schedulers.boundedElastic())
+                .subscribeOn(Schedulers.boundedElastic()) // этот игнорируется
                 .map(i -> {
                     log.info("Map 2 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
@@ -81,12 +81,12 @@ class OperatorsTest {
     @Test
     void multiplePublishOnSimple() {
         Flux<Integer> flux = Flux.range(1, 5)
-                .publishOn(Schedulers.single())
+                .publishOn(Schedulers.single()) //both used
                 .map(i -> {
                     log.info("Map1 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
                 })
-                .publishOn(Schedulers.boundedElastic())
+                .publishOn(Schedulers.boundedElastic()) //both used
                 .map(i -> {
                     log.info("Map2 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
@@ -106,7 +106,7 @@ class OperatorsTest {
                     log.info("Map1 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
                 })
-                .subscribeOn(Schedulers.boundedElastic())
+                .subscribeOn(Schedulers.boundedElastic()) //it's ignored
                 .map(i -> {
                     log.info("Map2 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
@@ -121,12 +121,12 @@ class OperatorsTest {
     @Test
     void subscribeAndPublishOnSimple() {
         Flux<Integer> flux = Flux.range(1, 5)
-                .subscribeOn(Schedulers.single())
+                .subscribeOn(Schedulers.single()) //both used
                 .map(i -> {
                     log.info("Map1 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
                 })
-                .publishOn(Schedulers.boundedElastic())
+                .publishOn(Schedulers.boundedElastic()) //both used
                 .map(i -> {
                     log.info("Map2 Number {} from thread {}", i, Thread.currentThread().getName());
                     return i;
@@ -180,6 +180,7 @@ class OperatorsTest {
 
         AtomicLong atomicLong = new AtomicLong();
         defer.subscribe(atomicLong::set);
+//        System.out.println(atomicLong.get());
         Assertions.assertTrue(atomicLong.get() > 0);
     }
 
@@ -189,7 +190,7 @@ class OperatorsTest {
         Flux<Integer> flux2 = Flux.just(3, 4);
 
 //        Flux<Integer> concat = Flux.concat(flux1, flux2);
-        Flux<Integer> concat = flux1.concatWith(flux2);
+        Flux<Integer> concat = flux1.concatWith(flux2).log();
 
 
         StepVerifier.create(concat)
@@ -214,7 +215,7 @@ class OperatorsTest {
         Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
         Flux<String> flux2 = Flux.just("c", "d");
 
-        Flux<String> merged = Flux.merge(flux1, flux2);
+        Flux<String> merged = Flux.merge(flux1, flux2);  //eager
 
         merged.subscribe(log::info);
 
@@ -233,6 +234,7 @@ class OperatorsTest {
         merged.subscribe(log::info);
 
         StepVerifier.create(merged)
+                .expectSubscription()
                 .expectNext("a", "b", "c", "d", "a", "b")
                 .verifyComplete();
     }
@@ -274,6 +276,7 @@ class OperatorsTest {
         Flux<String> merged = Flux.mergeDelayError(1, flux1, flux2, flux1).log();
 
         merged.subscribe(log::info);
+        System.out.println("----------------------------------------");
 
         StepVerifier.create(merged)
                 .expectNext("a", "c", "d", "a")
@@ -343,8 +346,6 @@ class OperatorsTest {
                 .expectNext(new Anime("Grand Blue", "Zero-G", 12),
                         new Anime("Baki", "TMS Entertainment", 24))
                 .verifyComplete();
-
-
     }
 
     @Data

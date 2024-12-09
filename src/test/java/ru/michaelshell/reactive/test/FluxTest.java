@@ -16,14 +16,18 @@ import java.util.List;
 @Slf4j
 class FluxTest {
 
-    @BeforeAll
-    static void init() {
-        BlockHound.install();
-    }
+//    @BeforeAll
+//    static void init() {
+//        BlockHound.install();
+//    }
 
     @Test
     void fluxSubscriber() {
         Flux<Integer> flux = Flux.range(2, 5).log();
+
+        flux.subscribe(integer -> System.out.println("Value: " + integer));
+
+        System.out.println("------------");
 
         StepVerifier.create(flux)
                 .expectNext(2, 3, 4, 5, 6)
@@ -70,7 +74,7 @@ class FluxTest {
     void fluxSubscriberNumberBackpressure() {
         Flux<Integer> flux = Flux.range(1, 10).log();
 
-        flux.subscribe(new BaseSubscriber<Integer>() {
+        flux.subscribe(new BaseSubscriber<>() {
             private int count = 0;
             private final int requestCount = 2;
 
@@ -88,7 +92,6 @@ class FluxTest {
                 }
             }
         });
-
 
         StepVerifier.create(flux)
                 .expectNext(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
@@ -108,12 +111,12 @@ class FluxTest {
 
     @Test
     void fluxSubscriberIntervalOne() throws InterruptedException {
-        Flux<Long> interval = Flux.interval(Duration.ofMillis(200))
+        Flux<Long> interval = Flux.interval(Duration.ofMillis(1000))
                 .take(10);
 
         interval.subscribe(i -> log.info("Number {}", i));
 
-        Thread.sleep(5000);
+        Thread.sleep(10000);
     }
 
     @Test
@@ -122,9 +125,9 @@ class FluxTest {
         StepVerifier.withVirtualTime(this::getInterval)
                 .expectSubscription()
                 .expectNoEvent(Duration.ofHours(24))
-                .thenAwait(Duration.ofDays(1))
                 .expectNext(0L)
                 .thenAwait(Duration.ofDays(1))
+//                .thenAwait(Duration.ofDays(1))
                 .expectNext(1L)
                 .thenCancel()
                 .verify();
@@ -138,12 +141,12 @@ class FluxTest {
     @Test
     void connectableFlux() throws InterruptedException {
         ConnectableFlux<Integer> flux = Flux.range(1, 10)
-//                .log()
+                .log()
                 .delayElements(Duration.ofMillis(100))
                 .publish();
 
-        flux.connect();
-
+//        flux.connect();
+//
 //        log.info("Thread sleeps 500ms");
 //        Thread.sleep(500);
 //
@@ -153,6 +156,10 @@ class FluxTest {
 //        Thread.sleep(300);
 //
 //        flux.subscribe(i -> log.info("Sub2 number {}", i));
+//
+//        log.info("Thread sleeps 1000ms");
+//        Thread.sleep(1000);
+
 
         StepVerifier.create(flux)
                 .then(flux::connect)
@@ -164,15 +171,16 @@ class FluxTest {
     @Test
     void connectableFluxAutoConnect() throws InterruptedException {
         Flux<Integer> fluxAutoConnect = Flux.range(1, 10)
+                .log()
                 .delayElements(Duration.ofMillis(100))
                 .publish()
                 .autoConnect(2);
 
-        StepVerifier.create(fluxAutoConnect)
+        StepVerifier
+                .create(fluxAutoConnect)
                 .then(fluxAutoConnect::subscribe)
                 .expectNext(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
                 .verifyComplete();
     }
-
 
 }
